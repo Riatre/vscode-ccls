@@ -156,6 +156,10 @@ function getClientConfig(context: ExtensionContext) {
     workspaceSymbol: {
       sort: false,
     },
+    completion: {
+      detailedLabel: false,
+      duplicateOptional: false,
+    }
   };
   let config = workspace.getConfiguration('ccls');
   for (let prop of configMapping) {
