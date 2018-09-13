@@ -142,7 +142,8 @@ function getClientConfig(context: ExtensionContext) {
     ['completion.includeBlacklist', 'completion.include.blacklist'],
     ['diagnostics.blacklist', 'diagnostics.blacklist'],
     ['diagnostics.whitelist', 'diagnostics.whitelist'],
-    ['diagnostics.onOpen', 'diagnostics.onSave'],
+    ['diagnostics.onOpen', 'diagnostics.onOpen'],
+    ['diagnostics.onSave', 'diagnostics.onSave'],
     ['diagnostics.onChange', 'diagnostics.onType'],
     ['codeLens.localVariables', 'codeLens.onLocalVariables'],
   ];
