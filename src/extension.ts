@@ -1,6 +1,6 @@
 import * as path from 'path';
-import {CodeLens, commands, DecorationOptions, DecorationRangeBehavior, DecorationRenderOptions, ExtensionContext, OverviewRulerLane, Position, Progress, ProgressLocation, ProviderResult, QuickPickItem, Range, StatusBarAlignment, TextDocument, TextEditor, TextEditorDecorationType, ThemeColor, Uri, window, workspace} from 'vscode';
-import {Message} from 'vscode-jsonrpc';
+import {CodeLens, commands, DecorationOptions, DecorationRangeBehavior, DecorationRenderOptions, ExtensionContext, Position, ProviderResult, QuickPickItem, Range, TextDocument, TextEditor, TextEditorDecorationType, ThemeColor, Uri, window, workspace, OutputChannel} from 'vscode';
+import * as WebSocket from 'ws';
 import {CancellationToken, LanguageClient, LanguageClientOptions, Middleware, ProvideCodeLensesSignature, RevealOutputChannelOn, ServerOptions} from 'vscode-languageclient/lib/main';
 import * as ls from 'vscode-languageserver-types';
 
@@ -175,6 +175,7 @@ function getClientConfig(context: ExtensionContext) {
     workspaceSymbol: {
       sort: false,
     },
+    traceEndpoint: ''
   };
   let config = workspace.getConfiguration('ccls');
   for (let prop of configMapping) {
@@ -194,11 +195,10 @@ function getClientConfig(context: ExtensionContext) {
       subconfig[subprops[subprops.length - 1]] = resolveVariables(value);
     }
   }
-
+  
+  clientConfig.traceEndpoint = config.get('trace.websocketEndpointUrl', '');
   return clientConfig;
 }
-
-
 
 export function activate(context: ExtensionContext) {
   /////////////////////////////////////
@@ -341,6 +341,29 @@ export function activate(context: ExtensionContext) {
         return false;
       },
       errorHandler: new cclsErrorHandler(workspace.getConfiguration('ccls'))
+    }
+
+    if (clientConfig.traceEndpoint) {
+      let socket = new WebSocket(clientConfig.traceEndpoint);
+      let log = '';
+      const websocketOutputChannel: OutputChannel = {
+        name: 'websocket',
+        append(value: string) {
+          log += value;
+        },
+        appendLine(value: string) {
+          log += value;
+          if (socket && socket.readyState == WebSocket.OPEN) {
+            socket.send(log);
+          }
+          log = '';
+        },
+        clear() {},
+        show() {},
+        hide() {},
+        dispose() {}
+      }
+      clientOptions.outputChannel = websocketOutputChannel;
     }
 
     // Create the language client and start the client.
