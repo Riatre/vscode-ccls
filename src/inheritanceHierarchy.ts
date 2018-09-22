@@ -1,9 +1,10 @@
-import { Event, EventEmitter, TreeDataProvider, TreeItem, TreeItemCollapsibleState } from 'vscode';
-import { parseUri } from './extension';
+import { commands, Event, EventEmitter, ExtensionContext, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, window } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/lib/main';
 import * as ls from 'vscode-languageserver-types';
+import { CclsClient } from './client';
+import { setContext } from './utils';
 
-export class InheritanceHierarchyNode {
+class InheritanceHierarchyNode {
   id: any
   kind: number
   name: string
@@ -20,7 +21,7 @@ export class InheritanceHierarchyNode {
   }
 }
 
-export class InheritanceHierarchyProvider implements
+class InheritanceHierarchyProvider implements
   TreeDataProvider<InheritanceHierarchyNode> {
   root: InheritanceHierarchyNode;
 
@@ -42,7 +43,7 @@ export class InheritanceHierarchyProvider implements
 
     let label = element.name;
     if (element.name != kBaseName && element.location) {
-      let path = parseUri(element.location.uri).path;
+      let path = Uri.parse(element.location.uri).path;
       let name = path.substr(path.lastIndexOf('/') + 1);
       label += ` (${name}:${element.location.range.start.line + 1})`;
     }
@@ -83,4 +84,61 @@ export class InheritanceHierarchyProvider implements
         return result.children;
       });
   }
+}
+
+export function activate(context: ExtensionContext, ccls: CclsClient) {
+  const inheritanceHierarchyProvider = new InheritanceHierarchyProvider(ccls.client);
+  window.registerTreeDataProvider(
+    'ccls.inheritanceHierarchy', inheritanceHierarchyProvider);
+  commands.registerTextEditorCommand(
+    'ccls.inheritanceHierarchy', (editor) => {
+      setContext('extension.ccls.inheritanceHierarchyVisible', true);
+
+      let position = editor.selection.active;
+      let uri = editor.document.uri;
+      ccls.client
+        .sendRequest('$ccls/inheritance', {
+          textDocument: {
+            uri: uri.toString(),
+          },
+          position: position,
+          derived: true,
+          qualified: false,
+          levels: 1,
+          hierarchy: true,
+        })
+        .then((entry: InheritanceHierarchyNode) => {
+          InheritanceHierarchyNode.setWantsDerived(entry, true);
+
+          ccls.client
+            .sendRequest('$ccls/inheritance', {
+              id: entry.id,
+              kind: entry.kind,
+              derived: false,
+              qualified: false,
+              levels: 1,
+              hierarchy: true,
+            })
+            .then((parentEntry: InheritanceHierarchyNode) => {
+              if (parentEntry.numChildren > 0) {
+                let parentWrapper = new InheritanceHierarchyNode();
+                parentWrapper.children = parentEntry.children;
+                parentWrapper.numChildren = parentEntry.children.length;
+                parentWrapper.name = '[[Base]]';
+                InheritanceHierarchyNode.setWantsDerived(
+                  parentWrapper, false);
+                entry.children.splice(0, 0, parentWrapper);
+                entry.numChildren += 1;
+              }
+
+              inheritanceHierarchyProvider.root = entry;
+              inheritanceHierarchyProvider.onDidChangeEmitter.fire();
+            });
+        })
+    });
+  commands.registerCommand('ccls.closeInheritanceHierarchy', () => {
+    setContext('extension.ccls.inheritanceHierarchyVisible', false);
+    inheritanceHierarchyProvider.root = undefined;
+    inheritanceHierarchyProvider.onDidChangeEmitter.fire();
+  });
 }
