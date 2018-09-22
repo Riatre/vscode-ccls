@@ -1,7 +1,9 @@
-import { Event, EventEmitter, TreeDataProvider, TreeItem, TreeItemCollapsibleState } from 'vscode';
+import * as path from 'path';
+import { commands, Event, EventEmitter, ExtensionContext, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, window } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/lib/main';
-import { parseUri } from './extension';
 import * as ls from 'vscode-languageserver-types';
+import { CclsClient } from './client';
+import { setContext } from './utils';
 
 enum CallType {
   Normal = 0,
@@ -9,7 +11,7 @@ enum CallType {
   Derived = 2,
   All = 3 // Normal & Base & Derived
 }
-export class CallHierarchyNode {
+class CallHierarchyNode {
   // These properties come directly from the language server.
   id: any
   name: string
@@ -22,7 +24,7 @@ export class CallHierarchyNode {
   children: CallHierarchyNode[]
 }
 
-export class CallHierarchyProvider implements TreeDataProvider<CallHierarchyNode> {
+class CallHierarchyProvider implements TreeDataProvider<CallHierarchyNode> {
   root: CallHierarchyNode;
 
   constructor(
@@ -54,7 +56,7 @@ export class CallHierarchyProvider implements TreeDataProvider<CallHierarchyNode
 
     let label = element.name;
     if (element.location) {
-      let path = parseUri(element.location.uri).path;
+      let path = Uri.parse(element.location.uri).path;
       let name = path.substr(path.lastIndexOf('/') + 1);
       label += ` (${name}:${element.location.range.start.line + 1})`;
     }
@@ -94,4 +96,45 @@ export class CallHierarchyProvider implements TreeDataProvider<CallHierarchyNode
         return result.children;
       });
   }
+}
+
+export function activate(context: ExtensionContext, ccls: CclsClient) {
+  let derivedDark =
+    context.asAbsolutePath(path.join('resources', 'derived-dark.svg'));
+  let derivedLight =
+    context.asAbsolutePath(path.join('resources', 'derived-light.svg'));
+  let baseDark =
+    context.asAbsolutePath(path.join('resources', 'base-dark.svg'));
+  let baseLight =
+    context.asAbsolutePath(path.join('resources', 'base-light.svg'));
+  const callHierarchyProvider = new CallHierarchyProvider(
+    ccls.client, derivedDark, derivedLight, baseDark, baseLight);
+  window.registerTreeDataProvider(
+    'ccls.callHierarchy', callHierarchyProvider);
+  commands.registerTextEditorCommand('ccls.callHierarchy', (editor) => {
+    setContext('extension.ccls.callHierarchyVisible', true);
+    let position = editor.selection.active;
+    let uri = editor.document.uri;
+    ccls.client
+      .sendRequest('$ccls/call', {
+        textDocument: {
+          uri: uri.toString(),
+        },
+        position: position,
+        callee: false,
+        callType: 0x1 | 0x2,
+        qualified: false,
+        levels: 2,
+        hierarchy: true,
+      })
+      .then((callNode: CallHierarchyNode) => {
+        callHierarchyProvider.root = callNode;
+        callHierarchyProvider.onDidChangeEmitter.fire();
+      });
+  });
+  commands.registerCommand('ccls.closeCallHierarchy', (e) => {
+    setContext('extension.ccls.callHierarchyVisible', false);
+    callHierarchyProvider.root = undefined;
+    callHierarchyProvider.onDidChangeEmitter.fire();
+  });
 }

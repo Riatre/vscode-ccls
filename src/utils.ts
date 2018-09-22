@@ -1,4 +1,12 @@
-import {Position, Range, Selection, TextEditorRevealType, Uri, window, workspace} from 'vscode';
+import { commands, Position, Range, Selection, TextEditorRevealType, Uri, window, workspace } from 'vscode';
+
+export function normalizeUri(u: string): string {
+  return Uri.parse(u).toString();
+}
+
+export function setContext(name, value) {
+  commands.executeCommand('setContext', name, value);
+}
 
 export function jumpToUriAtPosition(
     uri: Uri, position: Position, preserveFocus: boolean) {
