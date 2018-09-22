@@ -6,7 +6,7 @@ import * as fixIt from './fixIt';
 import * as gotoForTreeView from './gotoForTreeView';
 import * as inactiveRegions from './inactiveRegions';
 import * as inheritanceHierarchy from './inheritanceHierarchy';
-import * as semantichighlighting from './semanticHighlighting';
+import * as semanticHighlighting from './semanticHighlighting';
 
 
 function resolveVariablesInString(value: string) {
@@ -29,41 +29,51 @@ function resolveVariables(value: any) {
 
 function getInitializationOptions(context: ExtensionContext) {
   // Read prefs; this map goes from `ccls/js name` => `vscode prefs name`.
-  let configMapping = [
+  const configMapping = [
     ['cacheDirectory', 'cacheDirectory'],
-    ['index.whitelist', 'index.whitelist'],
-    ['index.blacklist', 'index.blacklist'],
+    ['compilationDatabaseCommand', 'misc.compilationDatabaseCommand'],
+    ['compilationDatabaseDirectory', 'misc.compilationDatabaseDirectory'],
+    ['clang.excludeArgs', 'index.excludeArgs'],
     ['clang.extraArgs', 'index.extraArgs'],
     ['clang.resourceDir', 'misc.resourceDirectory'],
-    ['workspaceSymbol.maxNum', 'misc.maxWorkspaceSearchResults'],
-    ['index.threads', 'misc.indexerCount'],
-    ['index.enabled', 'misc.enableIndexing'],
-    ['compilationDatabaseDirectory', 'misc.compilationDatabaseDirectory'],
-    ['client.snippetSupport', 'completion.enableSnippetInsertion'],
+    ['codeLens.localVariables', 'codeLens.onLocalVariables'],
+    ['completion.caseSensitivity', 'completion.caseSensitivity'],
+    ['completion.detailedLabel', 'completion.detailedLabel'],
+    ['completion.duplicateOptional', 'completion.duplicateOptional'],
+    ['completion.filterAndSort', 'completion.filterAndSort'],
     ['completion.includeMaxPathSize', 'completion.include.maximumPathLength'],
     ['completion.includeSuffixWhitelist', 'completion.include.whitelistLiteralEnding'],
     ['completion.includeWhitelist', 'completion.include.whitelist'],
     ['completion.includeBlacklist', 'completion.include.blacklist'],
+    ['client.snippetSupport', 'completion.enableSnippetInsertion'],
     ['diagnostics.blacklist', 'diagnostics.blacklist'],
     ['diagnostics.whitelist', 'diagnostics.whitelist'],
     ['diagnostics.onOpen', 'diagnostics.onOpen'],
     ['diagnostics.onSave', 'diagnostics.onSave'],
     ['diagnostics.onChange', 'diagnostics.onType'],
-    ['codeLens.localVariables', 'codeLens.onLocalVariables'],
+    ['diagnostics.spellChecking', 'diagnostics.spellChecking'],
+    ['highlight.blacklist', 'highlight.blacklist'],
+    ['highlight.whitelist', 'highlight.whitelist'],
+    ['largeFileSize', 'highlight.largeFileSize'],
+    ['index.whitelist', 'index.whitelist'],
+    ['index.blacklist', 'index.blacklist'],
+    ['index.multiVersion', 'index.multiVersion'],
+    ['index.onChange', 'index.onChange'],
+    ['workspaceSymbol.maxNum', 'misc.maxWorkspaceSearchResults'],
+    ['workspaceSymbol.caseSensitivity', 'misc.workspaceSymbolCaseSensitive'],
+    ['index.threads', 'misc.indexerCount'],
+    ['index.enabled', 'misc.enableIndexing'],
   ];
+  const castBooleanToInteger = ['index.multiVersion'];
   let initializationOptions = {
-    cacheDirectory: '',
+    cacheDirectory: '.ccls-cache',
     highlight: {
       lsRanges: true,
-      blacklist: semantichighlighting.hasAnySemanticHighlighting() ? '' : '.*',
+      blacklist: semanticHighlighting.hasAnySemanticHighlighting() ? undefined : ['.*'],
     },
     workspaceSymbol: {
       sort: false,
     },
-    completion: {
-      detailedLabel: false,
-      duplicateOptional: false,
-    }
   };
   let config = workspace.getConfiguration('ccls');
   for (let prop of configMapping) {
@@ -77,31 +87,11 @@ function getInitializationOptions(context: ExtensionContext) {
         }
         subconfig = subconfig[subprop];
       }
+      if (castBooleanToInteger.includes(prop[1])) {
+        value = +value;
+      }
       subconfig[subprops[subprops.length - 1]] = resolveVariables(value);
     }
-  }
-
-  // Set up a cache directory if there is not one.
-  if (!initializationOptions.cacheDirectory) {
-    if (!context.storagePath) {
-      const kOpenSettings = 'Open Settings';
-      window
-          .showErrorMessage(
-              'Could not auto-discover cache directory. Please use "Open Folder" ' +
-                  'or specify it in the |ccls.cacheDirectory| setting.',
-              kOpenSettings)
-          .then((selected) => {
-            if (selected == kOpenSettings)
-              commands.executeCommand('workbench.action.openWorkspaceSettings');
-          });
-      return;
-    }
-
-    // Provide a default cache directory if it is not present. Insert next to
-    // the project since if the user has an SSD they most likely have their
-    // source files on the SSD as well.
-    let cacheDir = '${workspaceFolder}/.ccls-cache/';
-    initializationOptions.cacheDirectory = resolveVariables(cacheDir);
   }
   return initializationOptions;
 }
@@ -151,7 +141,7 @@ export function activate(context: ExtensionContext) {
   extraRefs.activate(context, ccls);
   fixIt.activate(context, ccls);
   inactiveRegions.activate(context, ccls);
-  semantichighlighting.activate(context, ccls);
+  semanticHighlighting.activate(context, ccls);
   
   gotoForTreeView.activate(context, ccls);
   inheritanceHierarchy.activate(context, ccls);
