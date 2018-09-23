@@ -3,7 +3,7 @@
 //   - enable bold/italic decorators, might need change in vscode
 //   - only function call icon if the call is implicit
 
-import { DecorationRangeBehavior, DecorationRenderOptions, ExtensionContext, Range, TextEditorDecorationType, window, workspace } from 'vscode';
+import { DecorationRangeBehavior, DecorationRenderOptions, ExtensionContext, Range, TextEditorDecorationType, window, workspace, TextEditor } from 'vscode';
 import { CclsClient } from './client';
 import { normalizeUri } from './utils';
 
@@ -65,8 +65,8 @@ enum StorageClass {
 class SemanticSymbol {
   constructor(
       readonly stableId: number, readonly parentKind: SymbolKind,
-      readonly kind: SymbolKind, readonly isTypeMember: boolean,
-      readonly storage: StorageClass, readonly lsRanges: Array<Range>) {}
+      readonly kind: SymbolKind, readonly storage: StorageClass,
+      readonly lsRanges: Array<Range>) {}
 }
 
 class PublishSemanticHighlightingArgs {
@@ -179,6 +179,28 @@ export function hasAnySemanticHighlighting() {
   return false;
 }
 
+let cachedSemanticHighlighting =
+    new Map<string, Map<TextEditorDecorationType, Range[]>>();
+
+function updateSemanticHighlightingForEditor(editor: TextEditor) {
+  const uri = editor.document.uri.toString();
+  if (!cachedSemanticHighlighting.has(uri)) return;
+
+  // Clear decorations and set new ones. We might not use all of the
+  // decorations so clear before setting.
+  for (let [, decorations] of semanticDecorations) {
+    decorations.forEach((type) => {
+      editor.setDecorations(type, []);
+    });
+  }
+
+  // Set new decorations.
+  let decorations = cachedSemanticHighlighting[uri];
+  decorations.forEach((ranges, type) => {
+    editor.setDecorations(type, ranges);
+  });
+}
+
 export function activate(context: ExtensionContext, ccls: CclsClient) {
   for (let type of
            ['types', 'freeStandingFunctions', 'memberFunctions',
@@ -198,35 +220,33 @@ export function activate(context: ExtensionContext, ccls: CclsClient) {
         (args: PublishSemanticHighlightingArgs) => {
           updateConfigValues();
 
+          let decorations = new Map<TextEditorDecorationType, Array<Range>>();
+
+          for (let symbol of args.symbols) {
+            let type = tryFindDecoration(symbol);
+            if (!type) continue;
+            if (decorations.has(type)) {
+              let existing = decorations.get(type);
+              for (let range of symbol.lsRanges) existing.push(range);
+            } else {
+              decorations.set(type, symbol.lsRanges);
+            }
+          }
+
+          const uri = normalizeUri(args.uri);
+          cachedSemanticHighlighting[uri] = decorations;
+
           for (let editor of window.visibleTextEditors) {
-            if (normalizeUri(args.uri) != editor.document.uri.toString())
-              continue;
-
-            let decorations = new Map<TextEditorDecorationType, Array<Range>>();
-
-            for (let symbol of args.symbols) {
-              let type = tryFindDecoration(symbol);
-              if (!type) continue;
-              if (decorations.has(type)) {
-                let existing = decorations.get(type);
-                for (let range of symbol.lsRanges) existing.push(range);
-              } else {
-                decorations.set(type, symbol.lsRanges);
-              }
+            if (editor.document.uri.toString() == uri) {
+              updateSemanticHighlightingForEditor(editor);
             }
-
-            // Clear decorations and set new ones. We might not use all of the
-            // decorations so clear before setting.
-            for (let [, decorations] of semanticDecorations) {
-              decorations.forEach((type) => {
-                editor.setDecorations(type, []);
-              });
-            }
-            // Set new decorations.
-            decorations.forEach((ranges, type) => {
-              editor.setDecorations(type, ranges);
-            });
           }
         });
+  });
+  
+  window.onDidChangeActiveTextEditor(updateSemanticHighlightingForEditor);
+
+  workspace.onDidCloseTextDocument(document => {
+    cachedSemanticHighlighting.delete(document.uri.toString());
   });
 }
