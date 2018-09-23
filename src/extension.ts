@@ -7,27 +7,19 @@ import * as gotoForTreeView from './gotoForTreeView';
 import * as inactiveRegions from './inactiveRegions';
 import * as inheritanceHierarchy from './inheritanceHierarchy';
 import * as semanticHighlighting from './semanticHighlighting';
+import { TheOneBigMiddleware } from './middleware';
 
-
-function resolveVariablesInString(value: string) {
-  return value.replace('${workspaceFolder}', workspace.rootPath);
-}
-
-function resloveVariablesInArray(value: any[]) {
-  return value.map(v => resolveVariables(v));
-}
 
 function resolveVariables(value: any) {
-  if (typeof(value) == 'string') {
-    return resolveVariablesInString(value);
-  }
-  if (Array.isArray(value)) {
-      return resloveVariablesInArray(value);
+  if (typeof value === 'string') {
+    return value.replace('${workspaceFolder}', workspace.rootPath);
+  } else if (Array.isArray(value)) {
+    return value.map(resolveVariables);
   }
   return value;
 }
 
-function getInitializationOptions(context: ExtensionContext) {
+function getInitializationOptions() {
   // Read prefs; this map goes from `ccls/js name` => `vscode prefs name`.
   const configMapping = [
     ['cacheDirectory', 'cacheDirectory'],
@@ -100,14 +92,14 @@ export function activate(context: ExtensionContext) {
   let config = workspace.getConfiguration('ccls');
   let launchCommand: string = config.get('launch.command');
   let launchArgs: string[] = config.get('launch.args');
-  let initializationOptions = getInitializationOptions(context);
+  let initializationOptions = getInitializationOptions();
   let traceEndpoint: string = config.get('trace.websocketEndpointUrl');
   if (!launchCommand || !initializationOptions)
     return;
   // Notify the user that if they change a ccls setting they need to restart
   // vscode.
   context.subscriptions.push(workspace.onDidChangeConfiguration(() => {
-    let newConfig = getInitializationOptions(context);
+    let newConfig = getInitializationOptions();
     for (let key in newConfig) {
       if (!newConfig.hasOwnProperty(key))
         continue;
@@ -128,9 +120,11 @@ export function activate(context: ExtensionContext) {
     }
   }));
 
+  let middleware = new TheOneBigMiddleware();
   let ccls = new CclsClient(
-      launchCommand, launchArgs, initializationOptions, undefined,
+      launchCommand, launchArgs, initializationOptions, middleware,
       traceEndpoint);
+  middleware.ccls = ccls;
   context.subscriptions.push(ccls.start());
 
   // General commands.

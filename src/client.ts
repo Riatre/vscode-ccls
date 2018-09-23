@@ -28,20 +28,10 @@ function getTraceOutputChannel(traceEndpoint?: string): OutputChannel {
 export class CclsClient {
   client: LanguageClient | null;
 
-  private launchCommand: string;
-  private launchArgs: string[];
-  private initializationOptions: any;
-  private middleware: Middleware | undefined;
-  private traceEndpoint: string | undefined;
-
   constructor(
-      launchCommand: string, launchArgs: string[], initializationOptions: any,
-      middleware?: Middleware, traceEndpoint?: string) {
-    this.launchCommand = launchCommand;
-    this.launchArgs = launchArgs;
-    this.initializationOptions = initializationOptions;
-    this.middleware = middleware;
-    this.traceEndpoint = traceEndpoint;
+      private launchCommand: string, private launchArgs: string[],
+      private initializationOptions: any, private middleware?: Middleware,
+      private traceEndpoint?: string) {
     this.client = null;
   }
 
