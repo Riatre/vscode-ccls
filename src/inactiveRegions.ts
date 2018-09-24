@@ -44,10 +44,10 @@ export function activate(context: ExtensionContext, ccls: CclsClient) {
     if (skippedRanges.has(uri)) {
       editor.setDecorations(decorationType, skippedRanges.get(uri));
     }
-  });
+  }, null, context.subscriptions);
 
   // This only got called during dispose, which perfectly matches our goal.
   workspace.onDidCloseTextDocument(document => {
     skippedRanges.delete(document.uri.toString());
-  });
+  }, null, context.subscriptions);
 }

@@ -243,10 +243,11 @@ export function activate(context: ExtensionContext, ccls: CclsClient) {
           }
         });
   });
-  
-  window.onDidChangeActiveTextEditor(updateSemanticHighlightingForEditor);
+
+  window.onDidChangeActiveTextEditor(
+      updateSemanticHighlightingForEditor, null, context.subscriptions);
 
   workspace.onDidCloseTextDocument(document => {
     cachedSemanticHighlighting.delete(document.uri.toString());
-  });
+  }, null, context.subscriptions);
 }
