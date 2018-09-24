@@ -37,9 +37,14 @@ export class CclsClient {
 
   start() {
     if (this.client) return;
-  
+
     let clientOptions: LanguageClientOptions = {
-      documentSelector: ['c', 'cpp', 'objective-c', 'objective-cpp'],
+      documentSelector: [
+        {language: 'c', scheme: 'file'},
+        {language: 'cpp', scheme: 'file'},
+        {language: 'objective-c', scheme: 'file'},
+        {language: 'objective-cpp', scheme: 'file'},
+      ],
       diagnosticCollectionName: 'ccls',
       outputChannelName: 'ccls',
       revealOutputChannelOn: RevealOutputChannelOn.Never,
