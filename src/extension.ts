@@ -25,18 +25,19 @@ function getInitializationOptions() {
     ['cacheDirectory', 'cacheDirectory'],
     ['compilationDatabaseCommand', 'misc.compilationDatabaseCommand'],
     ['compilationDatabaseDirectory', 'misc.compilationDatabaseDirectory'],
-    ['clang.excludeArgs', 'index.excludeArgs'],
-    ['clang.extraArgs', 'index.extraArgs'],
-    ['clang.resourceDir', 'misc.resourceDirectory'],
-    ['codeLens.localVariables', 'codeLens.onLocalVariables'],
+    ['clang.excludeArgs', 'clang.excludeArgs'],
+    ['clang.extraArgs', 'clang.extraArgs'],
+    ['clang.pathMappings', 'clang.pathMappings'],
+    ['clang.resourceDir', 'clang.resourceDir'],
+    ['codeLens.localVariables', 'codeLens.localVariables'],
     ['completion.caseSensitivity', 'completion.caseSensitivity'],
     ['completion.detailedLabel', 'completion.detailedLabel'],
     ['completion.duplicateOptional', 'completion.duplicateOptional'],
     ['completion.filterAndSort', 'completion.filterAndSort'],
-    ['completion.includeMaxPathSize', 'completion.include.maximumPathLength'],
-    ['completion.includeSuffixWhitelist', 'completion.include.whitelistLiteralEnding'],
-    ['completion.includeWhitelist', 'completion.include.whitelist'],
-    ['completion.includeBlacklist', 'completion.include.blacklist'],
+    ['completion.include.maxPathSize', 'completion.include.maxPathSize'],
+    ['completion.include.suffixWhitelist', 'completion.include.suffixWhitelist'],
+    ['completion.include.whitelist', 'completion.include.whitelist'],
+    ['completion.include.blacklist', 'completion.include.blacklist'],
     ['client.snippetSupport', 'completion.enableSnippetInsertion'],
     ['diagnostics.blacklist', 'diagnostics.blacklist'],
     ['diagnostics.whitelist', 'diagnostics.whitelist'],
@@ -51,12 +52,10 @@ function getInitializationOptions() {
     ['index.blacklist', 'index.blacklist'],
     ['index.multiVersion', 'index.multiVersion'],
     ['index.onChange', 'index.onChange'],
-    ['workspaceSymbol.maxNum', 'misc.maxWorkspaceSearchResults'],
-    ['workspaceSymbol.caseSensitivity', 'misc.workspaceSymbolCaseSensitive'],
-    ['index.threads', 'misc.indexerCount'],
-    ['index.enabled', 'misc.enableIndexing'],
+    ['index.threads', 'index.threads'],
+    ['workspaceSymbol.maxNum', 'workspaceSymbol.maxNum'],
+    ['workspaceSymbol.caseSensitivity', 'workspaceSymbol.caseSensitivity'],
   ];
-  const castBooleanToInteger = ['index.multiVersion'];
   let initializationOptions = {
     cacheDirectory: '.ccls-cache',
     highlight: {
@@ -78,9 +77,6 @@ function getInitializationOptions() {
           subconfig[subprop] = {};
         }
         subconfig = subconfig[subprop];
-      }
-      if (castBooleanToInteger.includes(prop[1])) {
-        value = +value;
       }
       subconfig[subprops[subprops.length - 1]] = resolveVariables(value);
     }
@@ -136,7 +132,7 @@ export function activate(context: ExtensionContext) {
   fixIt.activate(context, ccls);
   inactiveRegions.activate(context, ccls);
   semanticHighlighting.activate(context, ccls);
-  
+
   gotoForTreeView.activate(context, ccls);
   inheritanceHierarchy.activate(context, ccls);
   callHierarchy.activate(context, ccls);
