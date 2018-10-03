@@ -50,6 +50,8 @@ function getInitializationOptions() {
     ['largeFileSize', 'highlight.largeFileSize'],
     ['index.whitelist', 'index.whitelist'],
     ['index.blacklist', 'index.blacklist'],
+    ['index.initialWhitelist', 'index.initialWhitelist'],
+    ['index.initialBlacklist', 'index.initialBlacklist'],
     ['index.multiVersion', 'index.multiVersion'],
     ['index.onChange', 'index.onChange'],
     ['index.threads', 'index.threads'],
