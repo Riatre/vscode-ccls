@@ -1,4 +1,5 @@
-import { commands, ExtensionContext, window, workspace } from 'vscode';
+import { commands, ExtensionContext, StatusBarAlignment, window, workspace } from 'vscode';
+import { Disposable } from 'vscode-jsonrpc';
 import * as callHierarchy from './callHierarchy';
 import { CclsClient } from './client';
 import * as extraRefs from './extraRefs';
@@ -6,9 +7,23 @@ import * as fixIt from './fixIt';
 import * as gotoForTreeView from './gotoForTreeView';
 import * as inactiveRegions from './inactiveRegions';
 import * as inheritanceHierarchy from './inheritanceHierarchy';
-import * as semanticHighlighting from './semanticHighlighting';
 import { TheOneBigMiddleware } from './middleware';
+import * as semanticHighlighting from './semanticHighlighting';
 
+interface CclsInfoResult {
+  db: {
+    files: number;
+    funcs: number;
+    types: number;
+    vars: number;
+  },
+  pipeline: {
+    pendingIndexRequests: number;
+  },
+  project: {
+    entries: number;
+  }
+};
 
 function resolveVariables(value: any) {
   if (typeof value === 'string') {
@@ -86,6 +101,36 @@ function getInitializationOptions() {
   return initializationOptions;
 }
 
+function setupStatusBar(_: ExtensionContext, ccls: CclsClient): Thenable<Disposable> {
+  let icon = window.createStatusBarItem(StatusBarAlignment.Right);
+  icon.text = 'ccls: loading';
+  icon.tooltip = 'ccls is starting / loading project metadata';
+  icon.show();
+
+  return ccls.client.onReady().then(() => {
+    return setInterval(() => {
+      ccls.client.sendRequest('$ccls/info').then((info: CclsInfoResult) => {
+        icon.text = `ccls: ${info.pipeline.pendingIndexRequests || 0} jobs`;
+        icon.tooltip = `Statistics:
+  ${info.db.files} files,
+  ${info.db.funcs} functions,
+  ${info.db.types} types,
+  ${info.db.vars} variables,
+  ${info.project.entries} entries in project.
+
+  ${info.pipeline.pendingIndexRequests} pending index requests`;
+      })
+    }, 2000);
+  }).then((timer) => {
+    return {
+      dispose() {
+        clearInterval(timer);
+        icon.dispose();
+      }
+    }
+  });
+}
+
 export function activate(context: ExtensionContext) {
   let config = workspace.getConfiguration('ccls');
   let launchCommand: string = config.get('launch.command');
@@ -129,6 +174,7 @@ export function activate(context: ExtensionContext) {
   commands.registerCommand('ccls.reload', () => {
     ccls.client.sendNotification('$ccls/reload');
   });
+  setupStatusBar(context, ccls);
 
   extraRefs.activate(context, ccls);
   fixIt.activate(context, ccls);
