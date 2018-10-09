@@ -3,8 +3,10 @@ import * as ls from 'vscode-languageserver-types';
 import { CclsClient } from "./client";
 import { jumpToUriAtPosition } from "./utils";
 
+let ccls: CclsClient;
+
 function makeRefHandler(
-  ccls: CclsClient, methodName: string, extraParams: object = {},
+  methodName: string, extraParams: object = {},
   autoGotoIfSingle = false) {
   return () => {
     let position = window.activeTextEditor.selection.active;
@@ -31,9 +33,10 @@ function makeRefHandler(
   }
 }
 
-export function activate(context: ExtensionContext, ccls: CclsClient) {
-  commands.registerCommand('ccls.vars', makeRefHandler(ccls, '$ccls/vars'));
-  commands.registerCommand('ccls.callers', makeRefHandler(ccls, '$ccls/call'));
-  commands.registerCommand('ccls.base', makeRefHandler(ccls, '$ccls/inheritance',
+export function activate(context: ExtensionContext, _ccls: CclsClient) {
+  ccls = _ccls;
+  commands.registerCommand('ccls.vars', makeRefHandler('$ccls/vars'));
+  commands.registerCommand('ccls.callers', makeRefHandler('$ccls/call'));
+  commands.registerCommand('ccls.base', makeRefHandler('$ccls/inheritance',
                            { derived: false }, true));
 }

@@ -1,10 +1,7 @@
-import { CancellationToken, CodeLens, DecorationOptions, DecorationRangeBehavior, DecorationRenderOptions, Position, ProviderResult, Range, TextDocument, ThemeColor, window, workspace, ExtensionContext } from "vscode";
+import { CancellationToken, CodeLens, DecorationOptions, DecorationRangeBehavior, DecorationRenderOptions, Position, ProviderResult, Range, TextDocument, ThemeColor, window, workspace, ExtensionContext, commands, Uri } from "vscode";
 import { ProvideCodeLensesSignature } from "vscode-languageclient";
 import * as ls from 'vscode-languageserver-types';
 import { CclsClient } from "./client";
-
-
-// TODO(riatre): Make a middleware chain instead of this bizarre mono class
 
 // For inline code lens.
 let decorationOpts: DecorationRenderOptions = {
@@ -52,6 +49,27 @@ function displayCodeLens(document: TextDocument, allCodeLens: CodeLens[]) {
   }
 }
 
+function overrideCclsXrefCommand(document: TextDocument, result: CodeLens[]) {
+  return result.map((val) => {
+    if (val.command && val.command.command === 'ccls.xref') {
+      val.command.command = 'ccls._xref';
+      val.command.arguments.push(document.uri);
+      val.command.arguments.push(val.range);
+    }
+    return val;
+  });
+}
+
+function xrefCommandHandler(...args) {
+  let range: Range = args.pop();
+  let uri: Uri = args.pop();
+  commands.executeCommand('ccls.xref', ...args)
+    .then(
+      (locations: ls.Location[]) => commands.executeCommand(
+        'editor.action.showReferences', uri, range.start,
+        locations.map(ccls.client.protocol2CodeConverter.asLocation)));
+}
+
 let ccls: CclsClient;
 
 export function provideCodeLenses(
@@ -59,8 +77,14 @@ export function provideCodeLenses(
   next: ProvideCodeLensesSignature): ProviderResult<CodeLens[]> {
   let config = workspace.getConfiguration('ccls');
   let enableInlineCodeLens = config.get('codeLens.renderInline', false);
-  if (!enableInlineCodeLens || !ccls)
-    return next(document, token);
+  if (!enableInlineCodeLens || !ccls) {
+    let result = next(document, token);
+    if (result instanceof Array) {
+      return overrideCclsXrefCommand(document, result);
+    } else {
+      return result.then(val => overrideCclsXrefCommand(document, val));
+    }
+  }
 
   // We run the codeLens request ourselves so we can intercept the response.
   return ccls.client
@@ -79,4 +103,5 @@ export function provideCodeLenses(
 
 export function activate(context: ExtensionContext, _ccls: CclsClient) {
   ccls = _ccls;
+  commands.registerCommand('ccls._xref', xrefCommandHandler);
 }
