@@ -7,7 +7,7 @@ import * as fixIt from './fixIt';
 import * as gotoForTreeView from './gotoForTreeView';
 import * as inactiveRegions from './inactiveRegions';
 import * as inheritanceHierarchy from './inheritanceHierarchy';
-import { TheOneBigMiddleware } from './middleware';
+import * as codeLens from './codeLens';
 import * as semanticHighlighting from './semanticHighlighting';
 
 interface CclsInfoResult {
@@ -163,18 +163,20 @@ export function activate(context: ExtensionContext) {
     }
   }));
 
-  let middleware = new TheOneBigMiddleware();
+  let middleware = {
+    provideCodeLenses: codeLens.provideCodeLenses
+  };
   let ccls = new CclsClient(
       launchCommand, launchArgs, initializationOptions, middleware,
       traceEndpoint);
-  middleware.ccls = ccls;
+  codeLens.activate(context, ccls);
   context.subscriptions.push(ccls.start());
 
   // General commands.
   commands.registerCommand('ccls.reload', () => {
     ccls.client.sendNotification('$ccls/reload');
   });
-  setupStatusBar(context, ccls);
+  setupStatusBar(context, ccls).then((d) => context.subscriptions.push(d));
 
   extraRefs.activate(context, ccls);
   fixIt.activate(context, ccls);

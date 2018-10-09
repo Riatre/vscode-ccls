@@ -1,5 +1,5 @@
-import { CancellationToken, CodeLens, DecorationOptions, DecorationRangeBehavior, DecorationRenderOptions, Position, ProviderResult, Range, TextDocument, ThemeColor, window, workspace } from "vscode";
-import { ProvideCodeLensesSignature, Middleware } from "vscode-languageclient";
+import { CancellationToken, CodeLens, DecorationOptions, DecorationRangeBehavior, DecorationRenderOptions, Position, ProviderResult, Range, TextDocument, ThemeColor, window, workspace, ExtensionContext } from "vscode";
+import { ProvideCodeLensesSignature } from "vscode-languageclient";
 import * as ls from 'vscode-languageserver-types';
 import { CclsClient } from "./client";
 
@@ -52,29 +52,31 @@ function displayCodeLens(document: TextDocument, allCodeLens: CodeLens[]) {
   }
 }
 
-export class TheOneBigMiddleware implements Middleware {
-  ccls: CclsClient | undefined;
+let ccls: CclsClient;
 
-  provideCodeLenses(
-    document: TextDocument, token: CancellationToken,
-    next: ProvideCodeLensesSignature): ProviderResult<CodeLens[]> {
-    let config = workspace.getConfiguration('ccls');
-    let enableInlineCodeLens = config.get('codeLens.renderInline', false);
-    if (!enableInlineCodeLens || !this.ccls)
-      return next(document, token);
+export function provideCodeLenses(
+  document: TextDocument, token: CancellationToken,
+  next: ProvideCodeLensesSignature): ProviderResult<CodeLens[]> {
+  let config = workspace.getConfiguration('ccls');
+  let enableInlineCodeLens = config.get('codeLens.renderInline', false);
+  if (!enableInlineCodeLens || !ccls)
+    return next(document, token);
 
-    // We run the codeLens request ourselves so we can intercept the response.
-    return this.ccls.client
-      .sendRequest('textDocument/codeLens', {
-        textDocument: {
-          uri: document.uri.toString(),
-        },
-      })
-      .then((a: ls.CodeLens[]): CodeLens[] => {
-        let result: CodeLens[] =
-          this.ccls.client.protocol2CodeConverter.asCodeLenses(a);
-        displayCodeLens(document, result);
-        return [];
-      });
-  };
+  // We run the codeLens request ourselves so we can intercept the response.
+  return ccls.client
+    .sendRequest('textDocument/codeLens', {
+      textDocument: {
+        uri: document.uri.toString(),
+      },
+    })
+    .then((a: ls.CodeLens[]): CodeLens[] => {
+      let result: CodeLens[] =
+        ccls.client.protocol2CodeConverter.asCodeLenses(a);
+      displayCodeLens(document, result);
+      return [];
+    });
+};
+
+export function activate(context: ExtensionContext, _ccls: CclsClient) {
+  ccls = _ccls;
 }
