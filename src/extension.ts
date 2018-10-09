@@ -5,7 +5,7 @@ import { CclsClient } from './client';
 import * as extraRefs from './extraRefs';
 import * as fixIt from './fixIt';
 import * as gotoForTreeView from './gotoForTreeView';
-import * as inactiveRegions from './inactiveRegions';
+import * as inactiveRegions from './skippedRanges';
 import * as inheritanceHierarchy from './inheritanceHierarchy';
 import * as codeLens from './codeLens';
 import * as semanticHighlighting from './semanticHighlighting';
