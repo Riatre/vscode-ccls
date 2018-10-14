@@ -76,6 +76,8 @@ export function provideCodeLenses(
   document: TextDocument, token: CancellationToken,
   next: ProvideCodeLensesSignature): ProviderResult<CodeLens[]> {
   let config = workspace.getConfiguration('ccls');
+  let enableCodeLens = config.get('codeLens.enabled', true);
+  if (!enableCodeLens) return [];
   let enableInlineCodeLens = config.get('codeLens.renderInline', false);
   if (!enableInlineCodeLens || !ccls) {
     let result = next(document, token);

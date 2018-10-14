@@ -82,6 +82,9 @@ function getInitializationOptions() {
     workspaceSymbol: {
       sort: false,
     },
+    client: {
+      hierarchicalDocumentSymbolSupport: false
+    },
   };
   let config = workspace.getConfiguration('ccls');
   for (let prop of configMapping) {
@@ -131,6 +134,28 @@ function setupStatusBar(_: ExtensionContext, ccls: CclsClient): Thenable<Disposa
   });
 }
 
+function promptForReload(oldInitializationOptions) {
+  let newConfig = getInitializationOptions();
+  for (let key in newConfig) {
+    if (!newConfig.hasOwnProperty(key))
+      continue;
+
+    if (!oldInitializationOptions ||
+      JSON.stringify(oldInitializationOptions[key]) !=
+      JSON.stringify(newConfig[key])) {
+      const kReload = 'Reload'
+      const message = `Please reload to apply the "ccls.${
+        key}" configuration change.`;
+
+      window.showInformationMessage(message, kReload).then(selected => {
+        if (selected == kReload)
+          commands.executeCommand('workbench.action.reloadWindow');
+      });
+      break;
+    }
+  }
+}
+
 export function activate(context: ExtensionContext) {
   let config = workspace.getConfiguration('ccls');
   let launchCommand: string = config.get('launch.command');
@@ -141,27 +166,8 @@ export function activate(context: ExtensionContext) {
     return;
   // Notify the user that if they change a ccls setting they need to restart
   // vscode.
-  context.subscriptions.push(workspace.onDidChangeConfiguration(() => {
-    let newConfig = getInitializationOptions();
-    for (let key in newConfig) {
-      if (!newConfig.hasOwnProperty(key))
-        continue;
-
-      if (!initializationOptions ||
-          JSON.stringify(initializationOptions[key]) !=
-              JSON.stringify(newConfig[key])) {
-        const kReload = 'Reload'
-        const message = `Please reload to apply the "ccls.${
-            key}" configuration change.`;
-
-        window.showInformationMessage(message, kReload).then(selected => {
-          if (selected == kReload)
-            commands.executeCommand('workbench.action.reloadWindow');
-        });
-        break;
-      }
-    }
-  }));
+  context.subscriptions.push(workspace.onDidChangeConfiguration(
+      () => promptForReload(initializationOptions)));
 
   let middleware = {
     provideCodeLenses: codeLens.provideCodeLenses
