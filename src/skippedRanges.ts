@@ -24,7 +24,7 @@ export function activate(context: ExtensionContext, ccls: CclsClient) {
   let skippedRanges = new Map<string, Range[]>();
 
   ccls.client.onReady().then(() => {
-    ccls.client.onNotification('$ccls/setSkippedRanges', (args) => {
+    ccls.client.onNotification('$ccls/publishSkippedRanges', (args) => {
       let uri = normalizeUri(args.uri);
       let ranges: Range[] =
           args.skippedRanges.map(ccls.client.protocol2CodeConverter.asRange);

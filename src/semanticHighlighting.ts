@@ -64,7 +64,7 @@ enum StorageClass {
 
 class SemanticSymbol {
   constructor(
-      readonly stableId: number, readonly parentKind: SymbolKind,
+      readonly id: number, readonly parentKind: SymbolKind,
       readonly kind: SymbolKind, readonly storage: StorageClass,
       readonly lsRanges: Array<Range>) {}
 }
@@ -112,7 +112,7 @@ function tryFindDecoration(symbol: SemanticSymbol):
   function get(name: string) {
     if (!semanticEnabled.get(name)) return undefined;
     let decorations = semanticDecorations.get(name);
-    return decorations[symbol.stableId % decorations.length];
+    return decorations[symbol.id % decorations.length];
   };
 
   if (symbol.kind == SymbolKind.Class || symbol.kind == SymbolKind.Struct) {
@@ -216,7 +216,7 @@ export function activate(context: ExtensionContext, ccls: CclsClient) {
 
   ccls.client.onReady().then(() => {
     ccls.client.onNotification(
-        '$ccls/publishSemanticHighlighting',
+        '$ccls/publishSemanticHighlight',
         (args: PublishSemanticHighlightingArgs) => {
           updateConfigValues();
 
