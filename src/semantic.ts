@@ -5,11 +5,12 @@ import {
   Range,
   TextEditor,
   TextEditorDecorationType,
+  Uri,
   window,
   workspace,
 } from "vscode";
 import { SymbolKind } from "vscode-languageserver-types";
-import { disposeAll, normalizeUri, unwrap } from "./utils";
+import { disposeAll, unwrap } from "./utils";
 
 enum CclsSymbolKind {
   // ls.SymbolKind ccls extensions
@@ -38,8 +39,13 @@ interface SemanticSymbol {
   readonly lsRanges: Range[];
 }
 
-export interface PublishSemanticHighlightArgs {
+export interface PublishSemanticHighlightArgsProtocol {
   readonly uri: string;
+  readonly symbols: SemanticSymbol[];
+}
+
+export interface PublishSemanticHighlightArgs {
+  readonly uri: Uri;
   readonly symbols: SemanticSymbol[];
 }
 
@@ -121,7 +127,7 @@ export class SemanticContext implements Disposable {
   public publishSemanticHighlight(args: PublishSemanticHighlightArgs) {
     this.updateConfigValues();
 
-    const normUri = normalizeUri(args.uri);
+    const normUri = args.uri.toString(true);
 
     for (const visibleEditor of window.visibleTextEditors) {
       if (normUri !== visibleEditor.document.uri.toString(true))

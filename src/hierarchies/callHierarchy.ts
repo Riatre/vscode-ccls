@@ -69,7 +69,7 @@ export class CallHierarchyProvider extends Hierarchy<CallHierarchyNode> {
         position,
         qualified: false,
         textDocument: {
-          uri: uri.toString(true),
+          uri: this.languageClient.code2ProtocolConverter.asUri(uri),
         },
       }
     );

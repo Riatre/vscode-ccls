@@ -16,10 +16,6 @@ export function disposeAll(items: Disposable[]): any[] {
   return items.reverse().map((d) => d.dispose());
 }
 
-export function normalizeUri(u: string): string {
-  return Uri.parse(u).toString(true);
-}
-
 export function setContext(name: string, value: any): void {
   commands.executeCommand("setContext", name, value);
 }

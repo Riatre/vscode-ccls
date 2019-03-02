@@ -47,7 +47,7 @@ export class MemberHierarchyProvider extends Hierarchy<MemberHierarchyNode> {
         position,
         qualified: false,
         textDocument: {
-          uri: uri.toString(true),
+          uri: this.languageClient.code2ProtocolConverter.asUri(uri),
         },
       }
     );

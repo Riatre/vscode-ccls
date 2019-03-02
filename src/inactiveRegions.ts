@@ -8,7 +8,7 @@ import {
   workspace
 } from "vscode";
 import { LanguageClient } from "vscode-languageclient";
-import { disposeAll, normalizeUri } from "./utils";
+import { disposeAll } from "./utils";
 
 export class InactiveRegionsProvider implements Disposable {
   private skippedRanges = new Map<string, Range[]>();
@@ -59,7 +59,7 @@ export class InactiveRegionsProvider implements Disposable {
   }
 
   private onSkippedRanges({uri, skippedRanges}: {uri: string, skippedRanges: any[]}) {
-    uri = normalizeUri(uri);
+    uri = this.client.protocol2CodeConverter.asUri(uri).toString(true);
     let ranges = skippedRanges
       .map(this.client.protocol2CodeConverter.asRange)
       .filter((e: Range | undefined) => e !== undefined) as Range[];

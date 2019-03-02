@@ -54,7 +54,7 @@ export class InheritanceHierarchyProvider extends Hierarchy<InheritanceHierarchy
       position,
       qualified: false,
       textDocument: {
-        uri: uri.toString(true),
+        uri: this.languageClient.code2ProtocolConverter.asUri(uri),
       },
     });
     InheritanceHierarchySetWantsDerived(entry, true);

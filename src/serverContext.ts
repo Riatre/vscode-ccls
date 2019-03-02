@@ -34,10 +34,11 @@ import { CallHierarchyProvider } from "./hierarchies/callHierarchy";
 import { InheritanceHierarchyProvider } from "./hierarchies/inheritanceHierarchy";
 import { MemberHierarchyProvider } from "./hierarchies/memberHierarchy";
 import { InactiveRegionsProvider } from "./inactiveRegions";
-import { PublishSemanticHighlightArgs, SemanticContext, semanticTypes } from "./semantic";
+import { PathConverterProvider } from "./pathConverter";
+import { PublishSemanticHighlightArgsProtocol, SemanticContext, semanticTypes } from "./semantic";
 import { StatusBarIconProvider } from "./statusBarIcon";
 import { ClientConfig, IHierarchyNode } from './types';
-import { disposeAll, normalizeUri, unwrap, wait } from "./utils";
+import { disposeAll, unwrap, wait } from "./utils";
 import { jumpToUriAtPosition } from "./vscodeUtils";
 
 interface LastGoto {
@@ -274,7 +275,10 @@ export class ServerContext implements Disposable {
     const semantic = new SemanticContext();
     this._dispose.push(semantic);
     this.client.onNotification('$ccls/publishSemanticHighlight',
-        (args: PublishSemanticHighlightArgs) => semantic.publishSemanticHighlight(args)
+        (args: PublishSemanticHighlightArgsProtocol) => semantic.publishSemanticHighlight({
+          symbols: args.symbols,
+          uri: this.p2c.asUri(args.uri),
+        })
     );
     this._dispose.push(commands.registerCommand(
         'ccls.navigate', this.makeNavigateHandler('$ccls/navigate')
@@ -349,7 +353,7 @@ export class ServerContext implements Disposable {
       const lensesObjs = await this.client.sendRequest<Array<any>>('textDocument/codeLens', {
         position,
         textDocument: {
-          uri: uri.toString(true),
+          uri: this.client.code2ProtocolConverter.asUri(uri),
         },
       });
       const lenses = this.p2c.asCodeLenses(lensesObjs);
@@ -373,7 +377,7 @@ export class ServerContext implements Disposable {
       'textDocument/codeLens',
       {
         textDocument: {
-          uri: document.uri.toString(true),
+          uri: this.client.code2ProtocolConverter.asUri(document.uri),
         },
       }
     );
@@ -470,6 +474,7 @@ export class ServerContext implements Disposable {
       middleware: {provideCodeLenses: (doc, next, token) => this.provideCodeLens(doc, next, token)},
       outputChannel: cclsChan,
       revealOutputChannelOn: RevealOutputChannelOn.Never,
+      uriConverters: new PathConverterProvider(),
     };
 
     const traceEndpoint = config.get<string>('trace.websocketEndpointUrl');
@@ -515,7 +520,7 @@ export class ServerContext implements Disposable {
           {
             position,
             textDocument: {
-              uri: uri.toString(true),
+              uri: this.client.code2ProtocolConverter.asUri(uri),
             },
             ...extraParams,
             ...userParams
@@ -544,18 +549,9 @@ export class ServerContext implements Disposable {
     );
   }
 
-  private showReferencesCmd(uri: string, position: ls.Position, locations: ls.Location[]) {
-    commands.executeCommand(
-      'editor.action.showReferences',
-      this.p2c.asUri(uri),
-      this.p2c.asPosition(position),
-      locations.map(this.p2c.asLocation)
-    );
-  }
-
-  private async gotoCmd(uri: string, position: ls.Position, locations: ls.Location[]) {
+  private async gotoCmd(uri: Uri, position: ls.Position, locations: ls.Location[]) {
     return jumpToUriAtPosition(
-      this.p2c.asUri(uri),
+      uri,
       this.p2c.asPosition(position),
       false /*preserveFocus*/
     );
@@ -576,8 +572,9 @@ export class ServerContext implements Disposable {
     }
 
     // Find existing open document.
+    const parsedUri = this.client.protocol2CodeConverter.asUri(uri);
     for (const textEditor of window.visibleTextEditors) {
-      if (textEditor.document.uri.toString(true) === normalizeUri(uri)) {
+      if (textEditor.document.uri === parsedUri) {
         applyEdits(textEditor);
         return;
       }
@@ -665,7 +662,7 @@ export class ServerContext implements Disposable {
         {
           position,
           textDocument: {
-            uri: uri.toString(true),
+            uri: this.client.code2ProtocolConverter.asUri(uri),
           },
           ...userParams
         }
