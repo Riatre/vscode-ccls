@@ -992,6 +992,35 @@
           "default": null,
           "description": "The maximum number of global search (ie, Ctrl+P + #foo) search results to report. For small search strings on large projects there can be a massive number of results (ie, over 1,000,000) so this limit is important to avoid extremely long delays. null means use the default value provided by the ccls language server."
         },
+        "ccls.misc.pathConversionRules": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "default": null,
+          "description": "Translate paths in LSP requests/responses at the client side. This allows to connect to a (potentially remote) language server which have different view of the file system hierarchy as client.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "client": {
+                "type": "string",
+                "description": "Filesystem path prefix at the client side."
+              },
+              "clientUri": {
+                "type": "string",
+                "description": "URI prefix at the client side, overrides `client`. This can be useful for non file:// schemes."
+              },
+              "server": {
+                "type": "string",
+                "description": "Filesystem path prefix at the server side"
+              }
+            },
+            "oneOf": [
+              {"required": ["client", "server"]},
+              {"required": ["clientUri", "server"]}
+            ]
+          }
+        },
         "ccls.codeLens.enabled": {
           "type": "boolean",
           "default": true,

@@ -34,6 +34,7 @@ import { CallHierarchyProvider } from "./hierarchies/callHierarchy";
 import { InheritanceHierarchyProvider } from "./hierarchies/inheritanceHierarchy";
 import { MemberHierarchyProvider } from "./hierarchies/memberHierarchy";
 import { InactiveRegionsProvider } from "./inactiveRegions";
+import { PathConverterProvider } from "./pathConverter";
 import { PublishSemanticHighlightArgs, SemanticContext, semanticTypes } from "./semantic";
 import { StatusBarIconProvider } from "./statusBarIcon";
 import { ClientConfig, IHierarchyNode } from './types';
@@ -470,6 +471,7 @@ export class ServerContext implements Disposable {
       middleware: {provideCodeLenses: (doc, next, token) => this.provideCodeLens(doc, next, token)},
       outputChannel: cclsChan,
       revealOutputChannelOn: RevealOutputChannelOn.Never,
+      uriConverters: new PathConverterProvider(),
     };
 
     const traceEndpoint = config.get<string>('trace.websocketEndpointUrl');
