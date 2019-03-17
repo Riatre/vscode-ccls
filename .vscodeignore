@@ -1,6 +1,16 @@
 .vscode/**
 src/**
+out/**
+node_modules
 **/*.map
 .gitignore
+.github
+build.py
 build.cmd
+publish.py
+.prettierrc.json
 tsconfig.json
+tslint.json
+webpack.config.js
+*.md
+
