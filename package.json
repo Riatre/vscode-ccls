@@ -3,7 +3,7 @@
   "description": "C/C++/ObjC language server supporting cross references, hierarchies, completion and semantic highlighting",
   "author": "ccls-project",
   "license": "MIT",
-  "version": "0.1.23",
+  "version": "1111.1.23",
   "publisher": "ccls-project",
   "scripts": {
     "vscode:prepublish": "npm run lint && npm run compile",
@@ -232,7 +232,7 @@
         "command": "ccls.vars"
       },
       {
-        "title": "Show Cross References",
+        "title": "Show Callers",
         "category": "ccls",
         "command": "ccls.call"
       },
