@@ -232,12 +232,7 @@ export class ServerContext implements Disposable {
 
     // The language client does not correctly deserialize arguments, so we have a
     // wrapper command that does it for us.
-    this._dispose.push(commands.registerCommand('ccls.showReferences', this.showReferencesCmd, this));
     this._dispose.push(commands.registerCommand('ccls.goto', this.gotoCmd, this));
-
-    this._dispose.push(commands.registerCommand("ccls._applyFixIt", this.fixItCmd, this));
-    this._dispose.push(commands.registerCommand('ccls._autoImplement', this.autoImplementCmd, this));
-    this._dispose.push(commands.registerCommand('ccls._insertInclude', this.insertIncludeCmd, this));
 
     const config = workspace.getConfiguration('ccls');
     if (config.get('misc.showInactiveRegions')) {
@@ -555,64 +550,6 @@ export class ServerContext implements Disposable {
       this.p2c.asPosition(position),
       false /*preserveFocus*/
     );
-  }
-
-  private async fixItCmd(uri: string, pTextEdits: ls.TextEdit[]) {
-    const textEdits = this.p2c.asTextEdits(pTextEdits);
-
-    async function applyEdits(editor: TextEditor) {
-      const success = await editor.edit((editBuilder) => {
-        for (const edit of textEdits) {
-          editBuilder.replace(edit.range, edit.newText);
-        }
-      });
-      if (!success) {
-        window.showErrorMessage("Failed to apply FixIt");
-      }
-    }
-
-    // Find existing open document.
-    const parsedUri = this.client.protocol2CodeConverter.asUri(uri);
-    for (const textEditor of window.visibleTextEditors) {
-      if (textEditor.document.uri === parsedUri) {
-        applyEdits(textEditor);
-        return;
-      }
-    }
-
-    // Failed, open new document.
-    const d = await workspace.openTextDocument(Uri.parse(uri));
-    const e = await window.showTextDocument(d);
-    if (!e) { // FIXME seems to be redundant
-      window.showErrorMessage("Failed to to get editor for FixIt");
-    }
-
-    applyEdits(e);
-  }
-
-  private async autoImplementCmd(uri: string, pTextEdits: ls.TextEdit[]) {
-    await commands.executeCommand('ccls._applyFixIt', uri, pTextEdits);
-    commands.executeCommand('ccls.goto', uri, pTextEdits[0].range.start);
-  }
-
-  private async insertIncludeCmd(uri: string, pTextEdits: ls.TextEdit[]) {
-    if (pTextEdits.length === 1)
-      commands.executeCommand('ccls._applyFixIt', uri, pTextEdits);
-    else {
-      class MyQuickPick implements QuickPickItem {
-        constructor(
-            public label: string, public description: string,
-            public edit: any) {}
-      }
-      const items: Array<MyQuickPick> = [];
-      for (const edit of pTextEdits) {
-        items.push(new MyQuickPick(edit.newText, '', edit));
-      }
-      const selected = await window.showQuickPick(items);
-      if (!selected)
-        return;
-      commands.executeCommand('ccls._applyFixIt', uri, [selected.edit]);
-    }
   }
 
   private async gotoForTreeView(node: IHierarchyNode) {
